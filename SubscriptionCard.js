@@ -1,18 +1,18 @@
 /******************************
 脚本名称: SubscriptionCard
-Version : v6.1.0
+Version : v6.2.0
 更新时间: 2026-06-27
 平台: Egern
 功能: 机场流量用量查询
 脚本作者：Nullwhy
 UI 设计：QClaw
 
-v6.1.0 小号组件重新设计：
+v6.2.0 中号组件重构：
 - Apple iOS 26 设计语言
-- 顶部：Logo + 名称 + 状态
-- 中间：超大号剩余流量
-- 渐变进度条
-- 底部：天数 + 时间
+- 左右布局
+- 左侧：超大数字 + Remaining + 百分比
+- 右侧：圆环进度条
+- 底部：已用/总量/剩余/到期
 **********************************/
 
 export default async function (ctx) {
@@ -21,7 +21,6 @@ export default async function (ctx) {
   const rawReset = (ctx.env.RESET || ctx.env.RESET1 || '').trim();
   const resetDay = /^\d+$/.test(rawReset) ? Number(rawReset) : null;
 
-  // Apple iOS 26 配色系统
   const C = {
     bg: { light: '#F2F2F7', dark: '#000000' },
     card: { light: '#FFFFFF', dark: '#1C1C1E' },
@@ -29,13 +28,11 @@ export default async function (ctx) {
     textSecondary: { light: '#3C3C43', dark: '#EBEBF5' },
     textTertiary: { light: '#6C6C70', dark: '#636366' },
     
-    // Apple 系统色
     blue: { light: '#007AFF', dark: '#0A84FF' },
     green: { light: '#34C759', dark: '#30D158' },
     orange: { light: '#FF9500', dark: '#FF9F0A' },
     red: { light: '#FF3B30', dark: '#FF453A' },
     gray2: { light: '#D1D1D6', dark: '#48484A' },
-    gray6: { light: '#636366', dark: '#AEAEB2' },
   };
 
   if (ctx.widgetFamily === 'systemLarge') {
@@ -88,21 +85,18 @@ function buildSmallWidget(C, data) {
         direction: 'column',
         gap: 10,
         children: [
-          // 顶部：Logo + 名称 + 状态
+          // 顶部
           {
             type: 'stack',
             direction: 'row',
             alignItems: 'center',
             children: [
-              // Logo
               { type: 'stack', width: 24, height: 24, borderRadius: 6, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', children: [
                 { type: 'text', text: '✈', font: { size: 12 } }
               ]},
               { type: 'spacer', width: 8 },
-              // 名称
               { type: 'text', text: name, font: { size: 13, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
               { type: 'spacer' },
-              // 状态 Badge
               {
                 type: 'stack',
                 padding: [3, 8],
@@ -115,18 +109,18 @@ function buildSmallWidget(C, data) {
             ]
           },
           
-          // 中间：超大号剩余流量
+          // 中间
           {
             type: 'stack',
             direction: 'column',
             alignItems: 'center',
             children: [
               { type: 'text', text: formatBytesLarge(remain), font: { size: 42, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-              { type: 'text', text: '剩余流量', font: { size: 11, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
+              { type: 'text', text: 'Remaining', font: { size: 11, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
             ]
           },
           
-          // 渐变进度条
+          // 进度条
           {
             type: 'stack',
             width: '100%',
@@ -145,7 +139,7 @@ function buildSmallWidget(C, data) {
             ]
           },
           
-          // 底部：天数 + 时间
+          // 底部
           {
             type: 'stack',
             direction: 'row',
@@ -153,7 +147,7 @@ function buildSmallWidget(C, data) {
             children: [
               { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 12, weight: 'medium', design: 'rounded' }, textColor: statusColor, maxLines: 1 },
               { type: 'spacer' },
-              { type: 'text', text: daysText != null ? `${daysText} 天` : '永久', font: { size: 11, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
+              { type: 'text', text: daysText != null ? `${daysText}d` : '∞', font: { size: 11, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
               { type: 'spacer', width: 8 },
               { type: 'text', text: refreshText, font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
             ]
@@ -171,12 +165,12 @@ function buildMediumWidget(C, data) {
   return {
     type: 'widget',
     backgroundColor: C.bg,
-    padding: [20, 20],
+    padding: [16, 16],
     children: [
       {
         type: 'stack',
         direction: 'column',
-        gap: 16,
+        gap: 12,
         children: [
           // 顶部
           {
@@ -184,56 +178,70 @@ function buildMediumWidget(C, data) {
             direction: 'row',
             alignItems: 'center',
             children: [
-              { type: 'text', text: name, font: { size: 15, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+              { type: 'stack', width: 24, height: 24, borderRadius: 6, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', children: [
+                { type: 'text', text: '✈', font: { size: 12 } }
+              ]},
+              { type: 'spacer', width: 8 },
+              { type: 'text', text: name, font: { size: 13, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
               { type: 'spacer' },
               {
                 type: 'stack',
-                direction: 'row',
-                alignItems: 'center',
-                gap: 4,
+                padding: [3, 8],
+                backgroundColor: statusColor,
+                borderRadius: 10,
                 children: [
-                  { type: 'stack', width: 8, height: 8, borderRadius: 4, backgroundColor: statusColor, children: [] },
-                  { type: 'text', text: statusTextZh(percent), font: { size: 13, weight: 'medium', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+                  { type: 'text', text: statusTextZh(percent), font: { size: 10, weight: 'semibold', design: 'rounded' }, textColor: '#FFFFFF', maxLines: 1 }
                 ]
               }
             ]
           },
           
-          // 中部
+          // 左右布局
           {
             type: 'stack',
             direction: 'row',
-            alignItems: 'center',
+            gap: 12,
             children: [
+              // 左侧：主数据
               {
                 type: 'stack',
                 direction: 'column',
                 gap: 4,
                 flex: 1,
                 children: [
-                  { type: 'text', text: formatBytesLarge(remain), font: { size: 36, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-                  { type: 'text', text: '剩余流量', font: { size: 13, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
+                  { type: 'text', text: formatBytesLarge(remain), font: { size: 40, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+                  { type: 'text', text: 'Remaining', font: { size: 12, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 },
+                  { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 28, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
                 ]
               },
-              buildRing(C, percent, statusColor, 80, 8)
+              
+              // 右侧：圆环
+              {
+                type: 'stack',
+                alignItems: 'center',
+                justifyContent: 'center',
+                children: [
+                  buildRing(C, percent, statusColor, 90, 8)
+                ]
+              }
             ]
           },
           
-          // 数据网格
+          // 底部数据
           {
             type: 'stack',
             direction: 'row',
-            gap: 12,
+            gap: 6,
             children: [
-              buildInfoItem(C, '套餐', formatBytes(total)),
-              buildInfoItem(C, '已用', formatBytes(used)),
-              buildInfoItem(C, '到期', formatExpireValue(expireText)),
-              buildInfoItem(C, '天数', daysText != null ? `${daysText}` : '永久'),
+              buildDataChip(C, '已用', formatBytes(used)),
+              buildDataChip(C, '总量', formatBytes(total)),
+              buildDataChip(C, '剩余', formatBytes(remain)),
+              buildDataChip(C, '到期', formatExpireValue(expireText)),
             ]
           },
           
-          // 时间戳
-          { type: 'text', text: `更新于 ${refreshText}`, font: { size: 11, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
+          // 刷新时间
+          { type: 'text', text: `Updated ${refreshText}`, font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
         ]
       }
     ]
@@ -321,7 +329,7 @@ function buildLargeAirportCard(C, info) {
             ]
           },
           { type: 'text', text: formatBytesLarge(remain), font: { size: 18, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-          { type: 'text', text: `到期 ${formatExpireValue(expireText)}${daysText != null ? ' · ' + daysText + '天' : ''}`, font: { size: 11, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
+          { type: 'text', text: `到期 ${formatExpireValue(expireText)}${daysText != null ? ' · ' + daysText + 'd' : ''}`, font: { size: 11, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
         ]
       }
     ]
@@ -335,10 +343,20 @@ function buildRing(C, percent, statusColor, size, strokeWidth) {
     type: 'stack',
     width: size,
     height: size,
+    borderRadius: size / 2,
+    backgroundColor: C.gray2,
     alignItems: 'center',
     justifyContent: 'center',
     children: [
-      { type: 'stack', width: size, height: size, borderRadius: size / 2, borderWidth: strokeWidth, borderColor: C.gray2, children: [] },
+      {
+        type: 'stack',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: strokeWidth,
+        borderColor: statusColor,
+        children: []
+      },
       {
         type: 'stack',
         direction: 'column',
@@ -352,16 +370,19 @@ function buildRing(C, percent, statusColor, size, strokeWidth) {
   };
 }
 
-function buildInfoItem(C, label, value) {
+function buildDataChip(C, label, value) {
   return {
     type: 'stack',
     direction: 'column',
     gap: 2,
     alignItems: 'center',
     flex: 1,
+    padding: [6, 4],
+    backgroundColor: C.card,
+    borderRadius: 8,
     children: [
-      { type: 'text', text: label, font: { size: 11, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
-      { type: 'text', text: value, font: { size: 13, weight: 'medium', design: 'rounded' }, textColor: C.text, maxLines: 1 }
+      { type: 'text', text: label, font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
+      { type: 'text', text: value, font: { size: 11, weight: 'medium', design: 'rounded' }, textColor: C.text, maxLines: 1 }
     ]
   };
 }
@@ -434,28 +455,6 @@ function formatExpireValue(text) {
   return String(text || '').replace(/^到期\s*/, '');
 }
 
-function buildUsageGrid(C, percent, cellSize = 14, cellGap = 5) {
-  const total = 35;
-  const active = Math.max(0, Math.min(total, Math.round((percent / 100) * total)));
-  const rows = [];
-  for (let row = 0; row < 5; row++) {
-    const cells = [];
-    for (let col = 0; col < 7; col++) {
-      const index = row * 7 + col;
-      cells.push({
-        type: 'stack',
-        width: cellSize,
-        height: cellSize,
-        borderRadius: Math.max(3, Math.round(cellSize / 3)),
-        backgroundColor: index < active ? C.green : C.gray2,
-        children: []
-      });
-    }
-    rows.push({ type: 'stack', direction: 'row', gap: cellGap, children: cells });
-  }
-  return { type: 'stack', direction: 'column', gap: 3, children: rows };
-}
-
 function emptyWidget(C) {
   return { type: 'widget', backgroundColor: C.bg, padding: 24, children: [{ type: 'text', text: '未配置订阅', font: { size: 16, weight: 'semibold', design: 'rounded' }, textColor: C.text }] };
 }
@@ -487,7 +486,6 @@ function parseUserInfo(header) {
   }));
 }
 
-// 格式化流量（小号）
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 GB';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -496,7 +494,6 @@ function formatBytes(bytes) {
   return `${value.toFixed(1)} ${units[index]}`;
 }
 
-// 格式化流量（大号）
 function formatBytesLarge(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 GB';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];

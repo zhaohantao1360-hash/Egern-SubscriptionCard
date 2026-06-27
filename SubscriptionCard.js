@@ -155,7 +155,7 @@ function buildSmallWidget(C, data) {
             children: [
               { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 11, weight: 'medium', design: 'rounded' }, textColor: statusColor, maxLines: 1 },
               { type: 'spacer' },
-              { type: 'text', text: daysText != null ? `${daysText}d` : '∞`, font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
+              { type: 'text', text: daysText != null ? `${daysText}d` : '∞', font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
               { type: 'spacer', width: 8 },
               { type: 'text', text: refreshText, font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
             ]

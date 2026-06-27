@@ -231,8 +231,8 @@ function buildMediumWidget(C, data) {
             direction: 'row',
             gap: 6,
             children: [
-              buildInfoCard(C, '套餐', formatBytes(total)),
-              buildInfoCard(C, '已用', formatBytes(used)),
+              buildInfoCard(C, '套餐', formatBytesLarge(total)),
+              buildInfoCard(C, '已用', formatBytesLarge(used)),
               buildInfoCard(C, daysText != null ? '剩余' : '到期', daysText != null ? `${daysText}d` : formatExpireValue(expireText)),
             ]
           }

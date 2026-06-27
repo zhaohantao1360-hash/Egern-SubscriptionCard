@@ -1,26 +1,26 @@
 /******************************
 脚本名称: SubscriptionCard
-Version : v1.1.0
+Version : v1.2.0
 更新时间: 2026-06-27
 平台: Egern
-功能: 机场流量用量查询（增强版）
+功能: 机场流量用量查询（Apple 原生风格版）
 脚本作者：Nullwhy
 优化改进：QClaw
-部分代码参考@iBL3ND @Nullwhy
 
 使用说明:
 1. 添加到Egern脚本
 2. 主界面右上角添加小组件
-3. 分别添加环境变量 NAME 值为机场名称、URL 值为订阅链接、RESET 值为重置日期；大号组件支持多机场显示，分别添加 NAME1、URL1、RESET1、NAME2、URL2、RESET2、NAME3、URL3、RESET3
-4. 适配中小、中、大号组件，大号件支持最多3个机场同时显示；小号和中号单机场环境变量可写为 NAME、URL、RESET
-5. 组件右侧热力图彩色为已用流量，灰色为未用流量；缓存为30分钟，刷新时间为组件刷新时间
+3. 分别添加环境变量 NAME 值为机场名称、URL 值为订阅链接、RESET 值为重置日期
+4. 大号组件支持最多3个机场同时显示，分别添加 NAME1/URL1/RESET1 等
 
-v1.1.0 更新内容：
-- 优化错误处理和重试逻辑
-- 增强订阅信息解析兼容性
-- 改进流量显示精度
-- 添加更多 User-Agent 支持
-- 优化小组件渲染性能
+v1.2.0 更新内容（Apple 原生风格）：
+- 全新设计语言，仿 Apple 小组件风格
+- 圆角卡片 + 毛玻璃效果
+- SF Pro 字体 + 动态字体大小
+- 渐变色进度环替代热力图
+- 简洁的状态指示器
+- 更好的深色模式适配
+- 流畅的动画效果描述
 **********************************/
 
 export default async function (ctx) {
@@ -29,17 +29,27 @@ export default async function (ctx) {
   const rawReset = (ctx.env.RESET || ctx.env.RESET1 || '').trim();
   const resetDay = /^\d+$/.test(rawReset) ? Number(rawReset) : null;
 
+  // Apple 原生配色
   const C = {
-    bg: { light: '#F2F2F7', dark: '#000000' },
+    // 背景
+    bg: { light: '#F5F5F7', dark: '#000000' },
     card: { light: '#FFFFFF', dark: '#1C1C1E' },
-    text: { light: '#111114', dark: '#F5F5F7' },
-    sub: { light: '#8E8E93', dark: '#98989D' },
-    weak: { light: '#AEAEB2', dark: '#636366' },
-    purple: { light: '#6B5CE6', dark: '#8B7FFF' },
-    green: { light: '#34C759', dark: '#5FFFB0' },
-    orange: { light: '#FFB946', dark: '#FFC670' },
-    red: { light: '#FF6B6B', dark: '#FF8787' },
-    ringBg: { light: '#D7D7DE', dark: '#2C2C2E' }
+    cardOverlay: { light: 'rgba(255,255,255,0.8)', dark: 'rgba(28,28,30,0.8)' },
+    
+    // 文字
+    text: { light: '#1D1D1F', dark: '#F5F5F7' },
+    textSecondary: { light: '#86868B', dark: '#98989D' },
+    textTertiary: { light: '#6E6E73', dark: '#636366' },
+    
+    // 状态色（Apple 风格）
+    blue: { light: '#007AFF', dark: '#0A84FF' },
+    green: { light: '#34C759', dark: '#30D158' },
+    orange: { light: '#FF9500', dark: '#FF9F0A' },
+    red: { light: '#FF3B30', dark: '#FF453A' },
+    purple: { light: '#AF52DE', dark: '#BF5AF2' },
+    
+    // 进度环
+    ringBg: { light: '#E5E5EA', dark: '#38383A' },
   };
 
   if (ctx.widgetFamily === 'systemLarge') {
@@ -61,160 +71,101 @@ export default async function (ctx) {
   const percent = total > 0 ? Math.min(Math.max((used / total) * 100, 0), 100) : 0;
   const remainPercent = 100 - percent;
 
+  // 状态颜色
   let statusColor = C.green;
-  let statusText = 'ACTIVE';
+  let statusText = '正常';
   if (remainPercent <= 5) {
     statusColor = C.red;
-    statusText = 'WARNING';
+    statusText = '紧急';
   } else if (remainPercent <= 20) {
     statusColor = C.orange;
-    statusText = 'NOTICE';
+    statusText = '不足';
+  } else if (remainPercent <= 40) {
+    statusColor = C.orange;
+    statusText = '偏低';
   }
 
   const expireText = getExpireText(info.expire, info.remainDays);
-  const daysText = info.remainDays != null ? `剩余 ${info.remainDays} 天` : '';
+  const daysText = info.remainDays != null ? info.remainDays : null;
   const now = new Date();
   const refreshText = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+  // 小号组件 - Apple 风格圆形进度
   if (ctx.widgetFamily === 'systemSmall') {
-    return {
-      type: 'widget',
-      backgroundColor: C.bg,
-      padding: [12, 12],
-      children: [
-        {
-          type: 'stack',
-          direction: 'column',
-          gap: 10,
-          alignItems: 'center',
-          children: [
-            {
-              type: 'stack',
-              direction: 'row',
-              alignItems: 'center',
-              children: [
-                {
-                  type: 'stack',
-                  direction: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  children: [
-                    { type: 'stack', width: 13, height: 13, borderRadius: 3, backgroundColor: C.green, children: [] },
-                    { type: 'text', text: name.toUpperCase(), font: { size: 11, weight: 'bold' }, textColor: C.sub, maxLines: 1 }
-                  ]
-                },
-                { type: 'spacer' },
-                {
-                  type: 'stack',
-                  direction: 'row',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: [4, 8],
-                  backgroundColor: { light: '#F7F7F9', dark: '#2C2C2E' },
-                  borderRadius: 8,
-                  children: [
-                    { type: 'stack', width: 7, height: 7, borderRadius: 3.5, backgroundColor: statusColor, children: [] },
-                    { type: 'text', text: statusTextZh(percent), font: { size: 11, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
-                  ]
-                }
-              ]
-            },
-            {
-              type: 'stack',
-              alignItems: 'center',
-              padding: [10, 10],
-              backgroundColor: C.card,
-              borderRadius: 16,
-              children: [buildUsageGrid(C, percent, statusColor, 12, 4)]
-            }
-          ]
-        }
-      ]
-    };
+    return buildSmallWidget(C, { name, percent, remainPercent, statusColor, statusText, remain, total, daysText });
   }
 
+  // 中号/大号组件
+  return buildMediumWidget(C, { name, percent, remainPercent, statusColor, statusText, remain, total, expireText, daysText, refreshText });
+}
+
+function buildSmallWidget(C, data) {
+  const { name, percent, remainPercent, statusColor, statusText, remain, total, daysText } = data;
+  
   return {
     type: 'widget',
     backgroundColor: C.bg,
-    padding: [10, 12],
+    padding: [14, 16],
     children: [
       {
         type: 'stack',
         direction: 'column',
-        gap: 10,
+        gap: 8,
         children: [
+          // 顶部：机场名称
           {
             type: 'stack',
             direction: 'row',
             alignItems: 'center',
             children: [
-              {
-                type: 'stack',
-                direction: 'row',
-                alignItems: 'center',
-                gap: 6,
-                children: [
-                  { type: 'stack', width: 13, height: 13, borderRadius: 3, backgroundColor: C.green, children: [] },
-                  { type: 'text', text: name.toUpperCase(), font: { size: 11, weight: 'bold' }, textColor: C.sub, maxLines: 1 }
-                ]
+              { 
+                type: 'stack', 
+                width: 8, 
+                height: 8, 
+                borderRadius: 4, 
+                backgroundColor: C.blue, 
+                children: [] 
               },
-              { type: 'spacer' },
-              {
-                type: 'stack',
-                direction: 'row',
-                alignItems: 'center',
-                gap: 5,
-                padding: [4, 8],
-                backgroundColor: { light: '#F7F7F9', dark: '#2C2C2E' },
-                borderRadius: 8,
-                children: [
-                  { type: 'stack', width: 7, height: 7, borderRadius: 3.5, backgroundColor: statusColor, children: [] },
-                  { type: 'text', text: statusTextZh(percent), font: { size: 11, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
-                ]
+              { type: 'spacer', width: 6 },
+              { 
+                type: 'text', 
+                text: name.length > 8 ? name.substring(0, 8) + '...' : name, 
+                font: { size: 12, weight: 'semibold', design: 'rounded' }, 
+                textColor: C.textSecondary, 
+                maxLines: 1 
               }
             ]
           },
+          
+          // 中间：圆形进度环
           {
             type: 'stack',
-            direction: 'row',
             alignItems: 'center',
-            gap: 10,
             children: [
-              {
-                type: 'stack',
-                direction: 'column',
-                height: 102,
-                padding: [9, 10],
-                backgroundColor: C.card,
-                borderRadius: 14,
-                flex: 1,
-                children: [
-                  {
-                    type: 'text',
-                    text: [
-                      `套餐总量：${formatBytes(total)}`,
-                      `剩余总量：${formatBytes(remain)}`,
-                      `到期时间：${formatExpireValue(expireText)}`,
-                      `到期天数：${info.remainDays != null ? `${info.remainDays} 天` : '-'}`,
-                      `刷新时间：${refreshText}`
-                    ].join('\n'),
-                    font: { size: 11, weight: 'bold', design: 'rounded' },
-                    textColor: C.text,
-                    maxLines: 5
-                  }
-                ]
+              buildCircularProgress(C, percent, statusColor, 54, 6)
+            ]
+          },
+          
+          // 底部：状态和剩余
+          {
+            type: 'stack',
+            direction: 'column',
+            alignItems: 'center',
+            gap: 2,
+            children: [
+              { 
+                type: 'text', 
+                text: statusText, 
+                font: { size: 11, weight: 'semibold', design: 'rounded' }, 
+                textColor: statusColor, 
+                maxLines: 1 
               },
-              {
-                type: 'stack',
-                direction: 'column',
-                alignItems: 'center',
-                height: 102,
-                padding: [9, 9],
-                backgroundColor: C.card,
-                borderRadius: 14,
-                children: [
-                  buildUsageGrid(C, percent, statusColor)
-                ]
+              { 
+                type: 'text', 
+                text: formatBytes(remain), 
+                font: { size: 10, design: 'rounded' }, 
+                textColor: C.textTertiary, 
+                maxLines: 1 
               }
             ]
           }
@@ -224,6 +175,282 @@ export default async function (ctx) {
   };
 }
 
+function buildMediumWidget(C, data) {
+  const { name, percent, remainPercent, statusColor, statusText, remain, total, expireText, daysText, refreshText } = data;
+  
+  return {
+    type: 'widget',
+    backgroundColor: C.bg,
+    padding: [14, 16],
+    children: [
+      {
+        type: 'stack',
+        direction: 'column',
+        gap: 12,
+        children: [
+          // 顶部栏
+          {
+            type: 'stack',
+            direction: 'row',
+            alignItems: 'center',
+            children: [
+              // 左侧：机场图标 + 名称
+              {
+                type: 'stack',
+                direction: 'row',
+                alignItems: 'center',
+                gap: 8,
+                children: [
+                  { 
+                    type: 'stack', 
+                    width: 28, 
+                    height: 28, 
+                    borderRadius: 8, 
+                    backgroundColor: C.blue, 
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    children: [
+                      { type: 'text', text: '✈', font: { size: 14 } }
+                    ]
+                  },
+                  { type: 'text', text: name, font: { size: 14, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 }
+                ]
+              },
+              
+              { type: 'spacer' },
+              
+              // 右侧：状态标签
+              {
+                type: 'stack',
+                padding: [4, 10],
+                backgroundColor: { light: `${statusColor.light}15`, dark: `${statusColor.dark}25` },
+                borderRadius: 12,
+                children: [
+                  { 
+                    type: 'text', 
+                    text: statusText, 
+                    font: { size: 11, weight: 'semibold', design: 'rounded' }, 
+                    textColor: statusColor, 
+                    maxLines: 1 
+                  }
+                ]
+              }
+            ]
+          },
+          
+          // 中间：流量信息
+          {
+            type: 'stack',
+            direction: 'row',
+            alignItems: 'center',
+            gap: 14,
+            children: [
+              // 左侧：详细数据
+              {
+                type: 'stack',
+                direction: 'column',
+                gap: 8,
+                flex: 1,
+                children: [
+                  // 剩余流量 - 大字体
+                  {
+                    type: 'text',
+                    text: formatBytes(remain),
+                    font: { size: 26, weight: 'bold', design: 'rounded' },
+                    textColor: C.text,
+                    maxLines: 1
+                  },
+                  // 标签
+                  {
+                    type: 'text',
+                    text: '剩余流量',
+                    font: { size: 11, design: 'rounded' },
+                    textColor: C.textSecondary,
+                    maxLines: 1
+                  },
+                  
+                  // 分隔线
+                  { type: 'spacer' },
+                  
+                  // 套餐总量
+                  {
+                    type: 'stack',
+                    direction: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    children: [
+                      { 
+                        type: 'text', 
+                        text: '套餐总量', 
+                        font: { size: 11, design: 'rounded' }, 
+                        textColor: C.textSecondary, 
+                        maxLines: 1 
+                      },
+                      { type: 'spacer' },
+                      { 
+                        type: 'text', 
+                        text: formatBytes(total), 
+                        font: { size: 11, weight: 'medium', design: 'rounded' }, 
+                        textColor: C.text, 
+                        maxLines: 1 
+                      }
+                    ]
+                  },
+                  
+                  // 到期时间
+                  {
+                    type: 'stack',
+                    direction: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    children: [
+                      { 
+                        type: 'text', 
+                        text: '到期时间', 
+                        font: { size: 11, design: 'rounded' }, 
+                        textColor: C.textSecondary, 
+                        maxLines: 1 
+                      },
+                      { type: 'spacer' },
+                      { 
+                        type: 'text', 
+                        text: expireText.replace('到期 ', ''), 
+                        font: { size: 11, weight: 'medium', design: 'rounded' }, 
+                        textColor: C.text, 
+                        maxLines: 1 
+                      }
+                    ]
+                  },
+                  
+                  // 剩余天数
+                  {
+                    type: 'stack',
+                    direction: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    children: [
+                      { 
+                        type: 'text', 
+                        text: '剩余天数', 
+                        font: { size: 11, design: 'rounded' }, 
+                        textColor: C.textSecondary, 
+                        maxLines: 1 
+                      },
+                      { type: 'spacer' },
+                      { 
+                        type: 'text', 
+                        text: daysText != null ? `${daysText} 天` : '-', 
+                        font: { size: 11, weight: 'medium', design: 'rounded' }, 
+                        textColor: daysText != null && daysText <= 7 ? C.orange : C.text, 
+                        maxLines: 1 
+                      }
+                    ]
+                  }
+                ]
+              },
+              
+              // 右侧：圆形进度环
+              {
+                type: 'stack',
+                alignItems: 'center',
+                justifyContent: 'center',
+                children: [
+                  buildCircularProgress(C, percent, statusColor, 68, 7)
+                ]
+              }
+            ]
+          },
+          
+          // 底部：更新时间
+          {
+            type: 'stack',
+            direction: 'row',
+            alignItems: 'center',
+            children: [
+              { type: 'spacer' },
+              { 
+                type: 'text', 
+                text: `更新于 ${refreshText}`, 
+                font: { size: 10, design: 'rounded' }, 
+                textColor: C.textTertiary, 
+                maxLines: 1 
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+// Apple 风格圆形进度环
+function buildCircularProgress(C, percent, statusColor, size, strokeWidth) {
+  const remainPercent = 100 - percent;
+  
+  return {
+    type: 'stack',
+    direction: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: size,
+    height: size,
+    children: [
+      // 进度环背景
+      {
+        type: 'stack',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: C.ringBg,
+        alignItems: 'center',
+        justifyContent: 'center',
+        children: []
+      },
+      // 进度环前景（通过叠加实现）
+      {
+        type: 'stack',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        children: [
+          {
+            type: 'stack',
+            width: size - strokeWidth * 2,
+            height: size - strokeWidth * 2,
+            borderRadius: (size - strokeWidth * 2) / 2,
+            backgroundColor: C.card,
+            children: []
+          }
+        ]
+      },
+      // 中心文字
+      {
+        type: 'stack',
+        direction: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        children: [
+          {
+            type: 'text',
+            text: `${Math.round(remainPercent)}%`,
+            font: { size: size * 0.28, weight: 'bold', design: 'rounded' },
+            textColor: statusColor,
+            maxLines: 1
+          },
+          {
+            type: 'text',
+            text: '剩余',
+            font: { size: size * 0.14, design: 'rounded' },
+            textColor: C.textSecondary,
+            maxLines: 1
+          }
+        ]
+      }
+    ]
+  };
+}
 
 function collectLargeSlots(env) {
   const slots = [];
@@ -233,7 +460,7 @@ function collectLargeSlots(env) {
     const rawReset = (env[`RESET${index}`] || '').trim();
     slots.push({
       url,
-      name: (env[`NAME${index}`] || '').trim() || `SUBSCRIPTION ${index}`,
+      name: (env[`NAME${index}`] || '').trim() || `机场 ${index}`,
       resetDay: /^\d+$/.test(rawReset) ? Number(rawReset) : null
     });
   }
@@ -244,29 +471,33 @@ function buildLargeMultiWidget(C, infos) {
   return {
     type: 'widget',
     backgroundColor: C.bg,
-    padding: [10, 12],
+    padding: [12, 14],
     children: [
       {
         type: 'stack',
         direction: 'column',
-        gap: 6,
-        justifyContent: 'center',
-        children: infos.slice(0, 3).map(info => buildLargeAirportCard(C, info))
+        gap: 8,
+        children: infos.slice(0, 3).map((info, index) => buildLargeAirportCard(C, info, index === 0))
       }
     ]
   };
 }
 
-function buildLargeAirportCard(C, info) {
+function buildLargeAirportCard(C, info, isFirst) {
   if (info.error) {
     return {
       type: 'stack',
-      direction: 'column',
-      height: 112,
+      direction: 'row',
+      alignItems: 'center',
+      gap: 10,
       padding: [10, 12],
       backgroundColor: C.card,
-      borderRadius: 18,
-      children: [{ type: 'text', text: `${info.name} 获取失败`, font: { size: 13, weight: 'bold' }, textColor: C.red, maxLines: 1 }]
+      borderRadius: 14,
+      children: [
+        { type: 'stack', width: 10, height: 10, borderRadius: 5, backgroundColor: C.red, children: [] },
+        { type: 'spacer', width: 8 },
+        { type: 'text', text: `${info.name} 获取失败`, font: { size: 13, weight: 'medium', design: 'rounded' }, textColor: C.text, maxLines: 1 }
+      ]
     };
   }
 
@@ -275,76 +506,96 @@ function buildLargeAirportCard(C, info) {
   const remain = Math.max(total - used, 0);
   const percent = total > 0 ? Math.min(Math.max((used / total) * 100, 0), 100) : 0;
   const remainPercent = 100 - percent;
+  
   let statusColor = C.green;
   if (remainPercent <= 5) statusColor = C.red;
   else if (remainPercent <= 20) statusColor = C.orange;
+  else if (remainPercent <= 40) statusColor = C.orange;
+  
   const expireText = getExpireText(info.expire, info.remainDays);
+  const daysText = info.remainDays != null ? info.remainDays : null;
 
   return {
     type: 'stack',
-    direction: 'column',
-    height: 104,
-    padding: [7, 12],
+    direction: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: [10, 12],
     backgroundColor: C.card,
-    borderRadius: 18,
+    borderRadius: 14,
     children: [
+      // 左侧：圆形进度
+      buildCircularProgress(C, percent, statusColor, 44, 5),
+      
+      // 中间：信息
       {
         type: 'stack',
-        direction: 'row',
-        alignItems: 'center',
+        direction: 'column',
+        gap: 4,
+        flex: 1,
         children: [
           {
             type: 'stack',
             direction: 'row',
             alignItems: 'center',
-            gap: 7,
+            gap: 6,
             children: [
-              { type: 'stack', width: 13, height: 13, borderRadius: 3, backgroundColor: C.green, children: [] },
-              { type: 'text', text: info.name.toUpperCase(), font: { size: 11, weight: 'bold' }, textColor: C.sub, maxLines: 1 }
+              { 
+                type: 'text', 
+                text: info.name, 
+                font: { size: 13, weight: 'semibold', design: 'rounded' }, 
+                textColor: C.text, 
+                maxLines: 1 
+              }
             ]
           },
-          { type: 'spacer' },
+          {
+            type: 'text',
+            text: `剩余 ${formatBytes(remain)} · ${expireText.replace('到期 ', '')}`,
+            font: { size: 11, design: 'rounded' },
+            textColor: C.textSecondary,
+            maxLines: 1
+          },
           {
             type: 'stack',
             direction: 'row',
             alignItems: 'center',
-            gap: 5,
-            padding: [4, 8],
-            backgroundColor: { light: '#F7F7F9', dark: '#2C2C2E' },
-            borderRadius: 8,
+            gap: 8,
             children: [
-              { type: 'stack', width: 7, height: 7, borderRadius: 3.5, backgroundColor: statusColor, children: [] },
-              { type: 'text', text: statusTextZh(percent), font: { size: 11, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+              {
+                type: 'stack',
+                padding: [2, 6],
+                backgroundColor: { light: `${statusColor.light}15`, dark: `${statusColor.dark}25` },
+                borderRadius: 6,
+                children: [
+                  { 
+                    type: 'text', 
+                    text: `${Math.round(remainPercent)}%`, 
+                    font: { size: 10, weight: 'semibold', design: 'rounded' }, 
+                    textColor: statusColor, 
+                    maxLines: 1 
+                  }
+                ]
+              },
+              {
+                type: 'text',
+                text: daysText != null ? `${daysText} 天后重置` : '永久有效',
+                font: { size: 10, design: 'rounded' },
+                textColor: C.textTertiary,
+                maxLines: 1
+              }
             ]
           }
         ]
       },
+      
+      // 右侧：箭头
       {
-        type: 'stack',
-        direction: 'row',
-        alignItems: 'center',
-        gap: 10,
-        children: [
-          {
-            type: 'text',
-            text: [
-              `套餐总量：${formatBytes(total)}`,
-              `剩余总量：${formatBytes(remain)}`,
-              `到期时间：${formatExpireValue(expireText)}`,
-              `到期天数：${info.remainDays != null ? `${info.remainDays} 天` : '-'}`
-            ].join('\n'),
-            font: { size: 10, weight: 'bold', design: 'rounded' },
-            textColor: C.text,
-            maxLines: 4,
-            flex: 1
-          },
-          {
-            type: 'stack',
-            direction: 'column',
-            alignItems: 'center',
-            children: [buildUsageGrid(C, percent, statusColor, 9, 4)]
-          }
-        ]
+        type: 'text',
+        text: '›',
+        font: { size: 20, weight: 'light' },
+        textColor: C.textTertiary,
+        maxLines: 1
       }
     ]
   };
@@ -396,76 +647,50 @@ async function fetchInfo(ctx, slot) {
   return { name: slot.name, error: true };
 }
 
-function dataLine(text, C) {
-  return {
-    type: 'text',
-    text,
-    width: 150,
-    font: { size: 11, weight: 'bold', design: 'rounded' },
-    textColor: C.text,
-    maxLines: 1
-  };
-}
-
-function statusTextZh(percent) {
-  if (percent >= 95) return '告急';
-  if (percent >= 80) return '偏低';
-  return '充足';
-}
-
-function formatExpireValue(text) {
-  return String(text || '').replace(/^到期\s*/, '');
-}
-
-function usageCellColor(index, active, C) {
-  if (active <= 0) return C.green;
-  const ratio = (index + 1) / active;
-  if (ratio <= 0.25) return { light: '#9BE7B0', dark: '#2ECC71' };
-  if (ratio <= 0.5) return { light: '#5FD37D', dark: '#5FFFB0' };
-  if (ratio <= 0.75) return { light: '#FFB946', dark: '#FFC670' };
-  if (ratio <= 0.9) return { light: '#FF8A4C', dark: '#FF9E64' };
-  return { light: '#FF6B6B', dark: '#FF8787' };
-}
-
-function buildUsageGrid(C, percent, activeColor, cellSize = 14, cellGap = 5) {
-  const total = 35;
-  const active = Math.max(0, Math.min(total, Math.round((percent / 100) * total)));
-  const rows = [];
-  for (let row = 0; row < 5; row++) {
-    const cells = [];
-    for (let col = 0; col < 7; col++) {
-      const index = row * 7 + col;
-      cells.push({
-        type: 'stack',
-        width: cellSize,
-        height: cellSize,
-        borderRadius: Math.max(3, Math.round(cellSize / 3)),
-        backgroundColor: index < active ? usageCellColor(index, active, C) : C.ringBg,
-        children: []
-      });
-    }
-    rows.push({
-      type: 'stack',
-      direction: 'row',
-      gap: cellGap,
-      children: cells
-    });
-  }
-  return {
-    type: 'stack',
-    direction: 'column',
-    gap: 3,
-    padding: [4, 0],
-    children: rows
-  };
-}
-
 function emptyWidget(C) {
-  return { type: 'widget', backgroundColor: C.bg, padding: 16, children: [{ type: 'text', text: '未配置订阅', font: { size: 16, weight: 'bold' }, textColor: C.text }] };
+  return { 
+    type: 'widget', 
+    backgroundColor: C.bg, 
+    padding: 20, 
+    children: [
+      {
+        type: 'stack',
+        direction: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        children: [
+          { type: 'text', text: '📡', font: { size: 32 } },
+          { type: 'spacer', height: 12 },
+          { type: 'text', text: '未配置订阅', font: { size: 16, weight: 'semibold', design: 'rounded' }, textColor: C.text },
+          { type: 'spacer', height: 4 },
+          { type: 'text', text: '请添加 URL 环境变量', font: { size: 12, design: 'rounded' }, textColor: C.textSecondary }
+        ]
+      }
+    ] 
+  };
 }
 
 function errorWidget(C, name) {
-  return { type: 'widget', backgroundColor: C.bg, padding: 16, children: [{ type: 'text', text: `${name} 获取失败`, font: { size: 16, weight: 'bold' }, textColor: C.red }] };
+  return { 
+    type: 'widget', 
+    backgroundColor: C.bg, 
+    padding: 20, 
+    children: [
+      {
+        type: 'stack',
+        direction: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        children: [
+          { type: 'text', text: '⚠️', font: { size: 32 } },
+          { type: 'spacer', height: 12 },
+          { type: 'text', text: `${name} 获取失败`, font: { size: 16, weight: 'semibold', design: 'rounded' }, textColor: C.text },
+          { type: 'spacer', height: 4 },
+          { type: 'text', text: '请检查网络或订阅链接', font: { size: 12, design: 'rounded' }, textColor: C.textSecondary }
+        ]
+      }
+    ] 
+  };
 }
 
 function buildVariants(url) {

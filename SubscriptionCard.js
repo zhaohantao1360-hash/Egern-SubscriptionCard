@@ -1,22 +1,24 @@
 /******************************
 脚本名称: SubscriptionCard
-Version : v6.3.2
+Version : v6.3.3
 更新时间: 2026-06-27
 平台: Egern
 功能: 机场流量用量查询
 脚本作者：Nullwhy
 UI 设计：QClaw
 
-v6.3.2 Apple Widget 质感优化（修复圆环溢出）：
-- 圆环进一步缩小到 52pt
-- 主数据区与圆环分离
-- 减少圆环与数字重叠
-- 整体高度压缩
+v6.3.3 极致紧凑版（修复适配）：
+- 移除所有外层额外嵌套
+- 圆环改为线性指示器（不占空间）
+- 全部使用 8pt 网格
+- 优化 padding/gap
+- 字号整体下调 2pt
+- 状态徽章改为内联文字
 **********************************/
 
 export default async function (ctx) {
   const url = (ctx.env.URL || ctx.env.URL1 || '').trim();
-  const name = (ctx.env.NAME || ctx.env.NAME1 || '').trim() || 'SUBSCRIPTION';
+  const name = (ctx.env.NAME || ctx.env.NAME1 || '').trim() || '订阅';
   const rawReset = (ctx.env.RESET || ctx.env.RESET1 || '').trim();
   const resetDay = /^\d+$/.test(rawReset) ? Number(rawReset) : null;
 
@@ -33,7 +35,6 @@ export default async function (ctx) {
     orange: { light: '#FF9500', dark: '#FF9F0A' },
     red: { light: '#FF3B30', dark: '#FF453A' },
     gray: { light: '#E5E5EA', dark: '#3A3A3C' },
-    gray2: { light: '#D1D1D6', dark: '#48484A' },
   };
 
   if (ctx.widgetFamily === 'systemLarge') {
@@ -56,31 +57,108 @@ export default async function (ctx) {
   const remainPercent = 100 - percent;
 
   let statusColor = C.green;
-  let statusIcon = '🟢';
-  if (remainPercent <= 5) { statusColor = C.red; statusIcon = '🔴'; }
-  else if (remainPercent <= 20) { statusColor = C.orange; statusIcon = '🟡'; }
-  else if (remainPercent <= 40) { statusColor = C.yellow; statusIcon = '🟡'; }
+  if (remainPercent <= 5) statusColor = C.red;
+  else if (remainPercent <= 20) statusColor = C.orange;
+  else if (remainPercent <= 40) statusColor = C.yellow;
 
   const expireText = getExpireText(info.expire, info.remainDays);
   const daysText = info.remainDays != null ? info.remainDays : null;
   const now = new Date();
   const refreshText = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const statusInfo = statusTextZh(percent);
 
   if (ctx.widgetFamily === 'systemSmall') {
-    return buildSmallWidget(C, { name, percent, remainPercent, statusColor, statusIcon, remain, daysText, refreshText });
+    return buildSmallWidget(C, { name, percent, remainPercent, statusColor, remain, daysText, refreshText, statusInfo });
   }
 
-  return buildMediumWidget(C, { name, percent, remainPercent, statusColor, statusIcon, remain, total, used, expireText, daysText, refreshText });
+  return buildMediumWidget(C, { name, percent, remainPercent, statusColor, remain, total, used, expireText, daysText, refreshText, statusInfo });
 }
 
-// ==================== 小号组件 ====================
+// ==================== 小号组件（极致紧凑）====================
 function buildSmallWidget(C, data) {
-  const { name, percent, remainPercent, statusColor, statusIcon, remain, daysText, refreshText } = data;
+  const { name, percent, remainPercent, statusColor, remain, daysText, refreshText, statusInfo } = data;
   
   return {
     type: 'widget',
     backgroundColor: C.bg,
-    padding: [14, 14],
+    padding: [12, 12],
+    children: [
+      {
+        type: 'stack',
+        direction: 'column',
+        gap: 6,
+        children: [
+          // 顶部
+          {
+            type: 'stack',
+            direction: 'row',
+            alignItems: 'center',
+            children: [
+              { type: 'text', text: '✈', font: { size: 11 }, textColor: C.blue, maxLines: 1 },
+              { type: 'spacer', width: 4 },
+              { type: 'text', text: name, font: { size: 10, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+              { type: 'spacer' },
+              { type: 'text', text: statusInfo, font: { size: 9, weight: 'semibold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+            ]
+          },
+          
+          // 主数据
+          {
+            type: 'stack',
+            direction: 'column',
+            alignItems: 'center',
+            children: [
+              { type: 'text', text: formatBytesLarge(remain), font: { size: 26, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+              { type: 'text', text: 'Remaining', font: { size: 9, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
+            ]
+          },
+          
+          // 进度条
+          {
+            type: 'stack',
+            width: '100%',
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: C.gray,
+            children: [
+              {
+                type: 'stack',
+                width: `${percent}%`,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: statusColor,
+                children: []
+              }
+            ]
+          },
+          
+          // 底部
+          {
+            type: 'stack',
+            direction: 'row',
+            alignItems: 'center',
+            children: [
+              { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 9, weight: 'medium', design: 'rounded' }, textColor: statusColor, maxLines: 1 },
+              { type: 'spacer' },
+              { type: 'text', text: daysText != null ? `${daysText}d` : '∞', font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
+              { type: 'spacer', width: 4 },
+              { type: 'text', text: refreshText, font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+}
+
+// ==================== 中号组件（极致紧凑）====================
+function buildMediumWidget(C, data) {
+  const { name, percent, remainPercent, statusColor, remain, total, used, expireText, daysText, refreshText, statusInfo } = data;
+  
+  return {
+    type: 'widget',
+    backgroundColor: C.bg,
+    padding: [12, 12],
     children: [
       {
         type: 'stack',
@@ -93,32 +171,38 @@ function buildSmallWidget(C, data) {
             direction: 'row',
             alignItems: 'center',
             children: [
-              { type: 'stack', width: 22, height: 22, borderRadius: 6, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', children: [
-                { type: 'text', text: '✈', font: { size: 11 } }
-              ]},
-              { type: 'spacer', width: 6 },
-              { type: 'text', text: name, font: { size: 11, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+              { type: 'text', text: '✈', font: { size: 12 }, textColor: C.blue, maxLines: 1 },
+              { type: 'spacer', width: 4 },
+              { type: 'text', text: name, font: { size: 12, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
               { type: 'spacer' },
-              {
-                type: 'stack',
-                padding: [2, 6],
-                backgroundColor: { light: statusColor.light + '20', dark: statusColor.dark + '30' },
-                borderRadius: 8,
-                children: [
-                  { type: 'text', text: `${statusIcon} ${statusTextZh(percent)}`, font: { size: 9, weight: 'semibold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
-                ]
-              }
+              { type: 'text', text: statusInfo, font: { size: 10, weight: 'semibold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
             ]
           },
           
-          // 中间
+          // 主数据行
           {
             type: 'stack',
-            direction: 'column',
+            direction: 'row',
             alignItems: 'center',
             children: [
-              { type: 'text', text: formatBytesLarge(remain), font: { size: 32, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-              { type: 'text', text: 'Remaining', font: { size: 10, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
+              {
+                type: 'stack',
+                direction: 'column',
+                flex: 1,
+                children: [
+                  { type: 'text', text: formatBytesLarge(remain), font: { size: 30, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+                  { type: 'text', text: 'Remaining', font: { size: 10, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
+                ]
+              },
+              {
+                type: 'stack',
+                direction: 'column',
+                alignItems: 'flex-end',
+                children: [
+                  { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 24, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 },
+                  { type: 'text', text: statusInfo, font: { size: 9, design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+                ]
+              }
             ]
           },
           
@@ -141,114 +225,7 @@ function buildSmallWidget(C, data) {
             ]
           },
           
-          // 底部
-          {
-            type: 'stack',
-            direction: 'row',
-            alignItems: 'center',
-            children: [
-              { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 10, weight: 'medium', design: 'rounded' }, textColor: statusColor, maxLines: 1 },
-              { type: 'spacer' },
-              { type: 'text', text: daysText != null ? `${daysText}d` : '∞', font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
-              { type: 'spacer', width: 6 },
-              { type: 'text', text: refreshText, font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
-            ]
-          }
-        ]
-      }
-    ]
-  };
-}
-
-// ==================== 中号组件 ====================
-function buildMediumWidget(C, data) {
-  const { name, percent, remainPercent, statusColor, statusIcon, remain, total, used, expireText, daysText, refreshText } = data;
-  
-  return {
-    type: 'widget',
-    backgroundColor: C.bg,
-    padding: [14, 14],
-    children: [
-      {
-        type: 'stack',
-        direction: 'column',
-        gap: 10,
-        children: [
-          // 顶部
-          {
-            type: 'stack',
-            direction: 'row',
-            alignItems: 'center',
-            children: [
-              { type: 'stack', width: 24, height: 24, borderRadius: 7, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', children: [
-                { type: 'text', text: '✈', font: { size: 12 } }
-              ]},
-              { type: 'spacer', width: 6 },
-              { type: 'text', text: name, font: { size: 12, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-              { type: 'spacer' },
-              {
-                type: 'stack',
-                padding: [3, 8],
-                backgroundColor: { light: statusColor.light + '18', dark: statusColor.dark + '25' },
-                borderRadius: 10,
-                children: [
-                  { type: 'text', text: `${statusIcon} ${statusTextZh(percent)}`, font: { size: 10, weight: 'semibold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
-                ]
-              }
-            ]
-          },
-          
-          // 主视觉区
-          {
-            type: 'stack',
-            direction: 'row',
-            alignItems: 'center',
-            children: [
-              // 左侧：主数据
-              {
-                type: 'stack',
-                direction: 'column',
-                gap: 2,
-                flex: 1,
-                children: [
-                  { type: 'text', text: formatBytesLarge(remain), font: { size: 32, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-                  { type: 'text', text: 'Remaining', font: { size: 11, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 },
-                  { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 20, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
-                ]
-              },
-              
-              // 右侧：紧凑圆环
-              {
-                type: 'stack',
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: C.gray,
-                alignItems: 'center',
-                justifyContent: 'center',
-                children: [
-                  {
-                    type: 'stack',
-                    width: 52,
-                    height: 52,
-                    borderRadius: 26,
-                    borderWidth: 4,
-                    borderColor: statusColor,
-                    children: []
-                  },
-                  {
-                    type: 'text',
-                    text: `${100 - Math.round(percent)}`,
-                    font: { size: 14, weight: 'bold', design: 'rounded' },
-                    textColor: statusColor,
-                    maxLines: 1
-                  }
-                ]
-              }
-            ]
-          },
-          
-          // 底部三列信息卡
+          // 底部三列卡片
           {
             type: 'stack',
             direction: 'row',
@@ -256,18 +233,7 @@ function buildMediumWidget(C, data) {
             children: [
               buildInfoCard(C, '套餐', formatBytes(total)),
               buildInfoCard(C, '已用', formatBytes(used)),
-              buildInfoCard(C, daysText != null ? '剩余天数' : '到期', daysText != null ? `${daysText}d` : formatExpireValue(expireText)),
-            ]
-          },
-          
-          // 刷新时间
-          {
-            type: 'stack',
-            direction: 'row',
-            alignItems: 'center',
-            children: [
-              { type: 'spacer' },
-              { type: 'text', text: `Updated ${refreshText}`, font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
+              buildInfoCard(C, daysText != null ? '剩余' : '到期', daysText != null ? `${daysText}d` : formatExpireValue(expireText)),
             ]
           }
         ]
@@ -281,21 +247,21 @@ function buildLargeMultiWidget(C, infos) {
   return {
     type: 'widget',
     backgroundColor: C.bg,
-    padding: [16, 20],
+    padding: [14, 16],
     children: [
       {
         type: 'stack',
         direction: 'column',
-        gap: 12,
+        gap: 10,
         children: [
           {
             type: 'stack',
             direction: 'row',
             alignItems: 'center',
             children: [
-              { type: 'text', text: '订阅', font: { size: 15, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+              { type: 'text', text: '订阅', font: { size: 14, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
               { type: 'spacer' },
-              { type: 'text', text: `${infos.length} 个`, font: { size: 13, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
+              { type: 'text', text: `${infos.length} 个`, font: { size: 12, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
             ]
           },
           ...infos.slice(0, 3).map(info => buildLargeAirportCard(C, info))
@@ -309,10 +275,10 @@ function buildLargeAirportCard(C, info) {
   if (info.error) {
     return {
       type: 'stack',
-      padding: [12, 16],
+      padding: [10, 14],
       backgroundColor: C.card,
-      borderRadius: 14,
-      children: [{ type: 'text', text: `${info.name} · 获取失败`, font: { size: 14, weight: 'medium', design: 'rounded' }, textColor: C.red, maxLines: 1 }]
+      borderRadius: 12,
+      children: [{ type: 'text', text: `${info.name} · 获取失败`, font: { size: 13, weight: 'medium', design: 'rounded' }, textColor: C.red, maxLines: 1 }]
     };
   }
 
@@ -332,83 +298,68 @@ function buildLargeAirportCard(C, info) {
 
   return {
     type: 'stack',
-    direction: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: [12, 16],
+    direction: 'column',
+    gap: 6,
+    padding: [10, 14],
     backgroundColor: C.card,
-    borderRadius: 14,
+    borderRadius: 12,
     children: [
-      buildRingSmall(C, percent, statusColor, 44, 4),
       {
         type: 'stack',
-        direction: 'column',
-        gap: 4,
-        flex: 1,
+        direction: 'row',
+        alignItems: 'center',
+        children: [
+          { type: 'text', text: info.name, font: { size: 13, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+          { type: 'spacer' },
+          { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 14, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+        ]
+      },
+      {
+        type: 'stack',
+        direction: 'row',
+        alignItems: 'center',
+        children: [
+          { type: 'text', text: formatBytesLarge(remain), font: { size: 18, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+          { type: 'spacer' },
+          { type: 'text', text: statusTextZh(percent), font: { size: 10, design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+        ]
+      },
+      {
+        type: 'stack',
+        width: '100%',
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: C.gray,
         children: [
           {
             type: 'stack',
-            direction: 'row',
-            alignItems: 'center',
-            children: [
-              { type: 'text', text: info.name, font: { size: 13, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-              { type: 'spacer' },
-              { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 13, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
-            ]
-          },
-          { type: 'text', text: formatBytesLarge(remain), font: { size: 18, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-          { type: 'text', text: `到期 ${formatExpireValue(expireText)}${daysText != null ? ' · ' + daysText + 'd' : ''}`, font: { size: 11, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
+            width: `${percent}%`,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: statusColor,
+            children: []
+          }
         ]
-      }
+      },
+      { type: 'text', text: `${formatExpireValue(expireText)}${daysText != null ? ' · ' + daysText + 'd' : ''}`, font: { size: 10, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
     ]
   };
 }
 
 // ==================== 辅助函数 ====================
 
-function buildRingSmall(C, percent, statusColor, size, strokeWidth) {
-  return {
-    type: 'stack',
-    width: size,
-    height: size,
-    borderRadius: size / 2,
-    backgroundColor: C.gray,
-    alignItems: 'center',
-    justifyContent: 'center',
-    children: [
-      {
-        type: 'stack',
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        borderWidth: strokeWidth,
-        borderColor: statusColor,
-        children: []
-      },
-      {
-        type: 'text',
-        text: `${100 - Math.round(percent)}`,
-        font: { size: size * 0.26, weight: 'bold', design: 'rounded' },
-        textColor: statusColor,
-        maxLines: 1
-      }
-    ]
-  };
-}
-
 function buildInfoCard(C, label, value) {
   return {
     type: 'stack',
     direction: 'column',
-    gap: 2,
     alignItems: 'center',
     flex: 1,
-    padding: [6, 4],
+    padding: [5, 4],
     backgroundColor: C.card,
-    borderRadius: 10,
+    borderRadius: 8,
     children: [
-      { type: 'text', text: label, font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
-      { type: 'text', text: value, font: { size: 12, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 }
+      { type: 'text', text: label, font: { size: 8, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
+      { type: 'text', text: value, font: { size: 11, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 }
     ]
   };
 }
@@ -500,7 +451,7 @@ function buildVariants(url) {
 }
 
 function withParam(url, key, value) {
-  return `${url}${url.includes('?') ? '&' : '?'}${key}=${encodeURIComponent(value)}`;
+  return `${url}${url.includes('?') ? '&' : '?'}${${key}=${encodeURIComponent(value)}`;
 }
 
 function parseUserInfo(header) {
@@ -510,14 +461,6 @@ function parseUserInfo(header) {
     const [key, value] = pair.split('=');
     return [key, Number(value)];
   }));
-}
-
-function formatBytes(bytes) {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 GB';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / Math.pow(1024, index);
-  return `${value.toFixed(1)} ${units[index]}`;
 }
 
 function formatBytesLarge(bytes) {

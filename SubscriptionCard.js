@@ -1,19 +1,17 @@
 /******************************
 脚本名称: SubscriptionCard
-Version : v6.3.0
+Version : v6.3.2
 更新时间: 2026-06-27
 平台: Egern
 功能: 机场流量用量查询
 脚本作者：Nullwhy
 UI 设计：QClaw
 
-v6.3.0 Apple 官方 Widget 质感优化：
-- 视觉中心：剩余流量数字
-- 缩小圆环 25%，仅显示百分比
-- 三列信息卡
-- Apple Emoji 状态徽章
-- 统一 8pt 间距体系
-- 深色模式柔和配色
+v6.3.2 Apple Widget 质感优化（修复圆环溢出）：
+- 圆环进一步缩小到 52pt
+- 主数据区与圆环分离
+- 减少圆环与数字重叠
+- 整体高度压缩
 **********************************/
 
 export default async function (ctx) {
@@ -22,7 +20,6 @@ export default async function (ctx) {
   const rawReset = (ctx.env.RESET || ctx.env.RESET1 || '').trim();
   const resetDay = /^\d+$/.test(rawReset) ? Number(rawReset) : null;
 
-  // Apple iOS 26 配色 + 深色模式柔和化
   const C = {
     bg: { light: '#F2F2F7', dark: '#000000' },
     card: { light: '#FFFFFF', dark: '#1C1C1E' },
@@ -30,7 +27,6 @@ export default async function (ctx) {
     textSecondary: { light: '#3C3C43', dark: '#AEAEB2' },
     textTertiary: { light: '#6C6C70', dark: '#636366' },
     
-    // Apple 系统色（深色模式柔和）
     blue: { light: '#007AFF', dark: '#0A84FF' },
     green: { light: '#34C759', dark: '#30D158' },
     yellow: { light: '#FFCC00', dark: '#FFD60A' },
@@ -59,7 +55,6 @@ export default async function (ctx) {
   const percent = total > 0 ? Math.min(Math.max((used / total) * 100, 0), 100) : 0;
   const remainPercent = 100 - percent;
 
-  // Apple 状态色
   let statusColor = C.green;
   let statusIcon = '🟢';
   if (remainPercent <= 5) { statusColor = C.red; statusIcon = '🔴'; }
@@ -85,7 +80,7 @@ function buildSmallWidget(C, data) {
   return {
     type: 'widget',
     backgroundColor: C.bg,
-    padding: [16, 16],
+    padding: [14, 14],
     children: [
       {
         type: 'stack',
@@ -98,33 +93,32 @@ function buildSmallWidget(C, data) {
             direction: 'row',
             alignItems: 'center',
             children: [
-              { type: 'stack', width: 24, height: 24, borderRadius: 6, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', children: [
-                { type: 'text', text: '✈', font: { size: 12 } }
+              { type: 'stack', width: 22, height: 22, borderRadius: 6, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', children: [
+                { type: 'text', text: '✈', font: { size: 11 } }
               ]},
-              { type: 'spacer', width: 8 },
-              { type: 'text', text: name, font: { size: 12, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+              { type: 'spacer', width: 6 },
+              { type: 'text', text: name, font: { size: 11, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
               { type: 'spacer' },
               {
                 type: 'stack',
-                padding: [3, 8],
+                padding: [2, 6],
                 backgroundColor: { light: statusColor.light + '20', dark: statusColor.dark + '30' },
-                borderRadius: 10,
+                borderRadius: 8,
                 children: [
-                  { type: 'text', text: `${statusIcon} ${statusTextZh(percent)}`, font: { size: 10, weight: 'semibold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+                  { type: 'text', text: `${statusIcon} ${statusTextZh(percent)}`, font: { size: 9, weight: 'semibold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
                 ]
               }
             ]
           },
           
-          // 中间：视觉中心
+          // 中间
           {
             type: 'stack',
             direction: 'column',
             alignItems: 'center',
-            padding: [8, 0],
             children: [
-              { type: 'text', text: formatBytesLarge(remain), font: { size: 42, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-              { type: 'text', text: 'Remaining', font: { size: 11, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
+              { type: 'text', text: formatBytesLarge(remain), font: { size: 32, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+              { type: 'text', text: 'Remaining', font: { size: 10, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 }
             ]
           },
           
@@ -132,15 +126,15 @@ function buildSmallWidget(C, data) {
           {
             type: 'stack',
             width: '100%',
-            height: 6,
-            borderRadius: 3,
+            height: 5,
+            borderRadius: 2.5,
             backgroundColor: C.gray,
             children: [
               {
                 type: 'stack',
                 width: `${percent}%`,
-                height: 6,
-                borderRadius: 3,
+                height: 5,
+                borderRadius: 2.5,
                 backgroundColor: statusColor,
                 children: []
               }
@@ -153,11 +147,11 @@ function buildSmallWidget(C, data) {
             direction: 'row',
             alignItems: 'center',
             children: [
-              { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 11, weight: 'medium', design: 'rounded' }, textColor: statusColor, maxLines: 1 },
+              { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 10, weight: 'medium', design: 'rounded' }, textColor: statusColor, maxLines: 1 },
               { type: 'spacer' },
-              { type: 'text', text: daysText != null ? `${daysText}d` : '∞', font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
-              { type: 'spacer', width: 8 },
-              { type: 'text', text: refreshText, font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
+              { type: 'text', text: daysText != null ? `${daysText}d` : '∞', font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
+              { type: 'spacer', width: 6 },
+              { type: 'text', text: refreshText, font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
             ]
           }
         ]
@@ -173,12 +167,12 @@ function buildMediumWidget(C, data) {
   return {
     type: 'widget',
     backgroundColor: C.bg,
-    padding: [16, 16],
+    padding: [14, 14],
     children: [
       {
         type: 'stack',
         direction: 'column',
-        gap: 12,
+        gap: 10,
         children: [
           // 顶部
           {
@@ -186,70 +180,68 @@ function buildMediumWidget(C, data) {
             direction: 'row',
             alignItems: 'center',
             children: [
-              { type: 'stack', width: 28, height: 28, borderRadius: 8, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', children: [
-                { type: 'text', text: '✈', font: { size: 14 } }
+              { type: 'stack', width: 24, height: 24, borderRadius: 7, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', children: [
+                { type: 'text', text: '✈', font: { size: 12 } }
               ]},
-              { type: 'spacer', width: 8 },
-              { type: 'text', text: name, font: { size: 13, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+              { type: 'spacer', width: 6 },
+              { type: 'text', text: name, font: { size: 12, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
               { type: 'spacer' },
               {
                 type: 'stack',
-                padding: [4, 10],
+                padding: [3, 8],
                 backgroundColor: { light: statusColor.light + '18', dark: statusColor.dark + '25' },
-                borderRadius: 12,
+                borderRadius: 10,
                 children: [
-                  { type: 'text', text: `${statusIcon} ${statusTextZh(percent)}`, font: { size: 11, weight: 'semibold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+                  { type: 'text', text: `${statusIcon} ${statusTextZh(percent)}`, font: { size: 10, weight: 'semibold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
                 ]
               }
             ]
           },
           
-          // 左右布局（主视觉区）
+          // 主视觉区
           {
             type: 'stack',
             direction: 'row',
             alignItems: 'center',
             children: [
-              // 左侧：主数据（视觉重心）
+              // 左侧：主数据
               {
                 type: 'stack',
                 direction: 'column',
-                gap: 4,
+                gap: 2,
                 flex: 1,
                 children: [
-                  { type: 'text', text: formatBytesLarge(remain), font: { size: 38, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
-                  { type: 'text', text: 'Remaining', font: { size: 12, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 },
-                  { type: 'spacer', height: 4 },
-                  { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 24, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
+                  { type: 'text', text: formatBytesLarge(remain), font: { size: 32, weight: 'bold', design: 'rounded' }, textColor: C.text, maxLines: 1 },
+                  { type: 'text', text: 'Remaining', font: { size: 11, design: 'rounded' }, textColor: C.textSecondary, maxLines: 1 },
+                  { type: 'text', text: `${Math.round(remainPercent)}%`, font: { size: 20, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
                 ]
               },
               
-              // 右侧：小圆环
+              // 右侧：紧凑圆环
               {
                 type: 'stack',
-                width: 64,
-                height: 64,
-                borderRadius: 32,
+                width: 52,
+                height: 52,
+                borderRadius: 26,
                 backgroundColor: C.gray,
                 alignItems: 'center',
                 justifyContent: 'center',
                 children: [
                   {
                     type: 'stack',
-                    width: 64,
-                    height: 64,
-                    borderRadius: 32,
-                    borderWidth: 5,
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    borderWidth: 4,
                     borderColor: statusColor,
                     children: []
                   },
                   {
-                    type: 'stack',
-                    direction: 'column',
-                    alignItems: 'center',
-                    children: [
-                      { type: 'text', text: `${100 - Math.round(percent)}`, font: { size: 16, weight: 'bold', design: 'rounded' }, textColor: statusColor, maxLines: 1 }
-                    ]
+                    type: 'text',
+                    text: `${100 - Math.round(percent)}`,
+                    font: { size: 14, weight: 'bold', design: 'rounded' },
+                    textColor: statusColor,
+                    maxLines: 1
                   }
                 ]
               }
@@ -260,7 +252,7 @@ function buildMediumWidget(C, data) {
           {
             type: 'stack',
             direction: 'row',
-            gap: 8,
+            gap: 6,
             children: [
               buildInfoCard(C, '套餐', formatBytes(total)),
               buildInfoCard(C, '已用', formatBytes(used)),
@@ -275,7 +267,7 @@ function buildMediumWidget(C, data) {
             alignItems: 'center',
             children: [
               { type: 'spacer' },
-              { type: 'text', text: `Updated ${refreshText}`, font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
+              { type: 'text', text: `Updated ${refreshText}`, font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 }
             ]
           }
         ]
@@ -408,15 +400,15 @@ function buildInfoCard(C, label, value) {
   return {
     type: 'stack',
     direction: 'column',
-    gap: 4,
+    gap: 2,
     alignItems: 'center',
     flex: 1,
-    padding: [10, 8],
+    padding: [6, 4],
     backgroundColor: C.card,
-    borderRadius: 12,
+    borderRadius: 10,
     children: [
-      { type: 'text', text: label, font: { size: 10, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
-      { type: 'text', text: value, font: { size: 13, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 }
+      { type: 'text', text: label, font: { size: 9, design: 'rounded' }, textColor: C.textTertiary, maxLines: 1 },
+      { type: 'text', text: value, font: { size: 12, weight: 'semibold', design: 'rounded' }, textColor: C.text, maxLines: 1 }
     ]
   };
 }

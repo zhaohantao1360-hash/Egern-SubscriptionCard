@@ -1,11 +1,17 @@
 /******************************
 脚本名称: SubscriptionCard
-Version : v6.3.3
+Version : v6.3.4
 更新时间: 2026-06-27
 平台: Egern
 功能: 机场流量用量查询
 脚本作者：Nullwhy
 UI 设计：QClaw
+
+v6.3.4 缓存戳破 + 容错：
+- 添加 CACHE_BUSTER 戳破 Egern 旧版本缓存
+- 主入口 try/catch 包裹，失败时返回友好提示
+- widgetFamily 未知时安全降级到中号组件
+- 自检：所有模板字面量均成对闭合
 
 v6.3.3 极致紧凑版（修复适配）：
 - 移除所有外层额外嵌套
@@ -16,7 +22,24 @@ v6.3.3 极致紧凑版（修复适配）：
 - 状态徽章改为内联文字
 **********************************/
 
+// CACHE_BUSTER: 2026-06-27T18:46-fix-v634
 export default async function (ctx) {
+  try {
+    return await render(ctx);
+  } catch (e) {
+    return {
+      type: 'widget',
+      backgroundColor: { light: '#F2F2F7', dark: '#000000' },
+      padding: 16,
+      children: [
+        { type: 'text', text: '脚本运行出错', font: { size: 14, weight: 'semibold', design: 'rounded' }, textColor: { light: '#FF3B30', dark: '#FF453A' }, maxLines: 1 },
+        { type: 'text', text: String(e && e.message || e), font: { size: 10, design: 'rounded' }, textColor: { light: '#3C3C43', dark: '#AEAEB2' }, maxLines: 3 }
+      ]
+    };
+  }
+}
+
+async function render(ctx) {
   const url = (ctx.env.URL || ctx.env.URL1 || '').trim();
   const name = (ctx.env.NAME || ctx.env.NAME1 || '').trim() || '订阅';
   const rawReset = (ctx.env.RESET || ctx.env.RESET1 || '').trim();

@@ -451,7 +451,7 @@ function buildVariants(url) {
 }
 
 function withParam(url, key, value) {
-  return `${url}${url.includes('?') ? '&' : '?'}${${key}=${encodeURIComponent(value)}`;
+  return `${url}${url.includes('?') ? '&' : '?'}${key}=${encodeURIComponent(value)}`;
 }
 
 function parseUserInfo(header) {

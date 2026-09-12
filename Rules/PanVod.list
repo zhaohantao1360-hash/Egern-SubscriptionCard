@@ -1,0 +1,69 @@
+# NAME: PanVod
+# AUTHOR: eulac-dev
+# REPO: https://github.com/eulac-dev/Proxy
+# UPDATED: 2026-08-14 22:27
+# SOURCE: Converted from Quantumult X HOST rules to Surge RULE-SET
+# TOTAL: 47
+
+# 115
+DOMAIN,fhnfile.oss-cn-shenzhen.aliyuncs.com,PanVod
+DOMAIN-SUFFIX,115.com,PanVod
+DOMAIN-SUFFIX,115cdn.com,PanVod
+DOMAIN-SUFFIX,115cdn.net,PanVod
+DOMAIN-SUFFIX,115img.com,PanVod
+DOMAIN-SUFFIX,116cd.cn,PanVod
+DOMAIN-SUFFIX,116cd.com,PanVod
+DOMAIN-SUFFIX,116cd.net,PanVod
+DOMAIN-SUFFIX,anxia.com,PanVod
+DOMAIN-SUFFIX,sq.cc,PanVod
+
+# 阿里/夸克/UC
+DOMAIN,ynuf.aliapp.org,PanVod
+DOMAIN-SUFFIX,aliyun.com,PanVod
+DOMAIN-SUFFIX,alipan.com,PanVod
+DOMAIN-SUFFIX,alicdn.com,PanVod
+DOMAIN-SUFFIX,aliyundrive.com,PanVod
+DOMAIN-SUFFIX,aliyundrive.net,PanVod
+DOMAIN-SUFFIX,alibaba.com,PanVod
+DOMAIN-SUFFIX,quark.cn,PanVod
+DOMAIN-SUFFIX,uc.cn,PanVod
+DOMAIN-SUFFIX,taobao.com,PanVod
+DOMAIN-SUFFIX,aliyuncs.com,PanVod
+
+# 百度
+DOMAIN,himg.bdimg.com,PanVod
+DOMAIN-SUFFIX,baidu.com,PanVod
+DOMAIN-SUFFIX,bcebos.com,PanVod
+DOMAIN-SUFFIX,bdstatic.com,PanVod
+DOMAIN-SUFFIX,baidupcs.com,PanVod
+
+# 天翼
+DOMAIN,ux.21cn.com,PanVod
+DOMAIN-SUFFIX,189.cn,PanVod
+DOMAIN-SUFFIX,dlife.cn,PanVod
+
+# 迅雷
+DOMAIN,static.xbase.cloud,PanVod
+DOMAIN-SUFFIX,xunlei.com,PanVod
+DOMAIN-SUFFIX,a.88cdn.com,PanVod
+
+# 123
+DOMAIN,www.123684.com,PanVod
+DOMAIN,www.123912.com,PanVod
+DOMAIN,www.123865.com,PanVod
+DOMAIN,matomo4397.123245.com,PanVod
+DOMAIN,umini.shujupie.com,PanVod
+DOMAIN-SUFFIX,123295.com,PanVod
+DOMAIN-SUFFIX,cjjd19.com,PanVod
+DOMAIN-SUFFIX,cnzz.com,PanVod
+DOMAIN-KEYWORD,123pan,PanVod
+
+# 移动云盘
+DOMAIN-SUFFIX,139.com,PanVod
+DOMAIN-SUFFIX,10086.cn,PanVod
+DOMAIN-SUFFIX,cmecloud.cn,PanVod
+DOMAIN-SUFFIX,cmicapm.com,PanVod
+
+# 光鸭
+DOMAIN-SUFFIX,guangyapan.com,PanVod
+DOMAIN-SUFFIX,guangyacdn.com,PanVod
